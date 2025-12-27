@@ -7,4 +7,5 @@
 - persistence: 持久化（数据库、仓储）
 - events: 事件总线
 - mediator: CQRS 中介者
+- logging: 日志系统
 """
