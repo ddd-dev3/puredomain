@@ -1,5 +1,5 @@
 """
-Bootstrap（组合根）
+Bootstrap（组合根）- 异步版
 
 这是整个应用的组合根，负责：
 1. 创建并连接所有容器
@@ -7,14 +7,19 @@ Bootstrap（组合根）
 3. 支持测试时替换依赖（override）
 
 使用方式：
-    from infrastructure.core.containers import bootstrap
+    from infrastructure.containers import bootstrap
 
     # 生产环境
     boot = bootstrap()
 
     # 获取依赖
     uow = boot.infra.unit_of_work()
-    settings = boot.config.settings()
+    settings = boot.infra.settings()
+
+    # 使用工作单元（异步）
+    async with uow:
+        # 业务逻辑
+        await uow.commit()
 
     # 测试环境（替换依赖）
     boot = bootstrap(start_orm=False)
@@ -24,7 +29,6 @@ Bootstrap（组合根）
 from typing import Optional
 from dependency_injector import containers, providers
 
-from .config import ConfigContainer
 from .infrastructure import InfraContainer
 from .application import AppContainer
 
@@ -39,19 +43,12 @@ class Bootstrap(containers.DeclarativeContainer):
     - 提供统一的访问入口
     """
 
-    # ============ 配置层 ============
-    config = providers.Container(ConfigContainer)
-
-    # ============ 基础设施层 ============
-    infra = providers.Container(
-        InfraContainer,
-        config=config  # 注入配置容器
-    )
+    # ============ 基础设施层（包含配置）============
+    infra = providers.Container(InfraContainer)
 
     # ============ 应用层 ============
     app = providers.Container(
         AppContainer,
-        config=config,  # 注入配置容器
         infra=infra  # 注入基础设施容器
     )
 
@@ -89,13 +86,13 @@ def bootstrap(
         boot = bootstrap()
 
         # 使用配置
-        settings = boot.config.settings()
+        settings = boot.infra.settings()
         print(settings.app_env)
 
-        # 使用基础设施
-        with boot.infra.unit_of_work() as uow:
+        # 使用工作单元（异步）
+        async with boot.infra.unit_of_work() as uow:
             # 业务逻辑
-            uow.commit()
+            await uow.commit()
 
         # 测试时替换依赖
         from dependency_injector import providers
@@ -111,7 +108,7 @@ def bootstrap(
         # 可选：启动 ORM
         if start_orm:
             # 如果有 ORM 映射初始化逻辑，在这里执行
-            # from infrastructure.core.database.orm import start_mappers
+            # from infrastructure.persistence.orm import start_mappers
             # start_mappers()
             pass
 
@@ -131,15 +128,21 @@ def get_bootstrap() -> Bootstrap:
 
 def get_settings():
     """快捷获取配置"""
-    return get_bootstrap().config.settings()
+    return get_bootstrap().infra.settings()
 
 
 def get_unit_of_work():
-    """快捷获取工作单元（每次调用返回新实例）"""
+    """
+    快捷获取工作单元（每次调用返回新实例）
+
+    使用方式（异步）：
+        async with get_unit_of_work() as uow:
+            # 业务逻辑
+            await uow.commit()
+    """
     return get_bootstrap().infra.unit_of_work()
 
 
-def get_db_session():
-    """快捷获取数据库 Session"""
-    factory = get_bootstrap().infra.db_session_factory()
-    return factory()
+def get_session_factory():
+    """快捷获取异步 Session 工厂"""
+    return get_bootstrap().infra.db_session_factory()

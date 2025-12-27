@@ -1,5 +1,5 @@
 """
-配置模块
+配置管理模块
 """
 
 from .settings import Settings, get_settings, settings

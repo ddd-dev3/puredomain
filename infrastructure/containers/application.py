@@ -26,7 +26,7 @@ Handler 注册流程：
 from typing import TYPE_CHECKING
 from dependency_injector import containers, providers
 
-from infrastructure.core.mediator import create_mediator, get_mediator_factory
+from infrastructure.mediator import create_mediator, get_mediator_factory
 
 # 导入示例 Handlers（可删除）
 from application.handlers.example_handlers import CreateUserHandler
@@ -37,9 +37,6 @@ if TYPE_CHECKING:
 
 class AppContainer(containers.DeclarativeContainer):
     """应用容器 - 管理应用层服务"""
-
-    # 依赖配置容器
-    config = providers.DependenciesContainer()
 
     # 依赖基础设施容器
     infra = providers.DependenciesContainer()

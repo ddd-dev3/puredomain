@@ -1,7 +1,7 @@
 """
-数据库工厂 - 根据环境自动选择数据库
+数据库工厂 - 根据环境自动选择数据库（异步版）
 
-基于 SQLModel（Pydantic + SQLAlchemy）实现。
+基于 SQLModel + SQLAlchemy async 实现。
 
 支持环境：
 - test: SQLite 内存数据库（快速测试）
@@ -10,33 +10,33 @@
 """
 
 import os
-from typing import Literal, Optional
+from typing import Literal, Optional, AsyncGenerator
 
-from sqlalchemy import Engine
-from sqlalchemy.pool import StaticPool
-from sqlmodel import create_engine, Session, SQLModel
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
+from sqlalchemy.pool import StaticPool, NullPool
+from sqlmodel import SQLModel
 
 Environment = Literal["test", "dev", "staging", "prod"]
 
 
 class DatabaseFactory:
-    """数据库工厂 - 统一的数据库创建接口"""
+    """数据库工厂 - 统一的异步数据库创建接口"""
 
     @staticmethod
-    def create_engine(env: Optional[Environment] = None) -> Engine:
+    def create_engine(env: Optional[Environment] = None) -> AsyncEngine:
         """
-        根据环境创建数据库引擎
+        根据环境创建异步数据库引擎
 
         Args:
             env: 环境类型，如果不指定则从环境变量 APP_ENV 读取
 
         Returns:
-            SQLAlchemy Engine 实例
-
-        环境优先级：
-        1. 参数传入的 env
-        2. 环境变量 APP_ENV
-        3. 默认 'dev'
+            SQLAlchemy AsyncEngine 实例
         """
         if env is None:
             env = DatabaseFactory.get_current_env()
@@ -53,26 +53,26 @@ class DatabaseFactory:
             raise ValueError(f"Unknown environment: {env}")
 
     @staticmethod
-    def _create_test_engine() -> Engine:
+    def _create_test_engine() -> AsyncEngine:
         """
-        测试环境：SQLite 内存数据库
+        测试环境：SQLite 内存数据库（异步）
 
         特点：
         - 超快速（在内存中）
         - 每次运行都是全新的
         - 适合单元测试和集成测试
         """
-        return create_engine(
-            "sqlite:///:memory:",
+        return create_async_engine(
+            "sqlite+aiosqlite:///:memory:",
             echo=False,
             connect_args={"check_same_thread": False},
             poolclass=StaticPool,  # 内存数据库使用静态连接池
         )
 
     @staticmethod
-    def _create_dev_engine() -> Engine:
+    def _create_dev_engine() -> AsyncEngine:
         """
-        开发环境：SQLite 文件数据库
+        开发环境：SQLite 文件数据库（异步）
 
         特点：
         - 数据持久化到文件
@@ -85,16 +85,16 @@ class DatabaseFactory:
         import pathlib
         pathlib.Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
-        return create_engine(
-            f"sqlite:///{db_path}",
+        return create_async_engine(
+            f"sqlite+aiosqlite:///{db_path}",
             echo=False,
             connect_args={"check_same_thread": False},
         )
 
     @staticmethod
-    def _create_supabase_engine(env: str) -> Engine:
+    def _create_supabase_engine(env: str) -> AsyncEngine:
         """
-        生产环境：Supabase (PostgreSQL)
+        生产环境：Supabase (PostgreSQL) 异步
 
         Args:
             env: 'staging' 或 'prod'
@@ -104,7 +104,7 @@ class DatabaseFactory:
         - PROD_DATABASE_URL: prod 环境数据库 URL
 
         URL 格式：
-        postgresql://user:password@host:port/database
+        postgresql+asyncpg://user:password@host:port/database
         """
         env_var = f"{env.upper()}_DATABASE_URL"
         db_url = os.getenv(env_var)
@@ -115,41 +115,36 @@ class DatabaseFactory:
                 f"Please set environment variable: {env_var}"
             )
 
-        return create_engine(
+        # 将 postgresql:// 转换为 postgresql+asyncpg://
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        return create_async_engine(
             db_url,
             pool_size=int(os.getenv(f"{env.upper()}_DB_POOL_SIZE", "10")),
             max_overflow=int(os.getenv(f"{env.upper()}_DB_MAX_OVERFLOW", "20")),
-            pool_pre_ping=True,  # 自动检测连接是否有效
-            echo=False,  # 生产环境不显示 SQL
+            pool_pre_ping=True,
+            echo=False,
         )
 
     @staticmethod
-    def create_session_factory(engine: Engine):
+    def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
         """
-        创建 Session 工厂
+        创建异步 Session 工厂
 
         Args:
-            engine: SQLAlchemy Engine
+            engine: SQLAlchemy AsyncEngine
 
         Returns:
-            返回一个可调用对象，调用后返回 SQLModel Session
+            async_sessionmaker 实例
         """
-        def session_factory() -> Session:
-            return Session(engine, expire_on_commit=False)
-        return session_factory
-
-    @staticmethod
-    def create_session(engine: Engine) -> Session:
-        """
-        创建单个 Session
-
-        Args:
-            engine: SQLAlchemy Engine
-
-        Returns:
-            SQLModel Session 实例
-        """
-        return Session(engine, expire_on_commit=False)
+        return async_sessionmaker(
+            bind=engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
 
     @staticmethod
     def get_current_env() -> Environment:
@@ -184,9 +179,9 @@ class DatabaseFactory:
             env = DatabaseFactory.get_current_env()
 
         if env == "test":
-            return "sqlite:///:memory:"
+            return "sqlite+aiosqlite:///:memory:"
         elif env == "dev":
-            return f"sqlite:///{os.getenv('DEV_DB_PATH', 'data/dev.db')}"
+            return f"sqlite+aiosqlite:///{os.getenv('DEV_DB_PATH', 'data/dev.db')}"
         else:
             env_var = f"{env.upper()}_DATABASE_URL"
             url = os.getenv(env_var, "")
@@ -200,42 +195,36 @@ class DatabaseFactory:
 
 # 便捷函数
 
-def get_engine(env: Optional[Environment] = None) -> Engine:
-    """便捷函数：创建数据库引擎"""
+def get_engine(env: Optional[Environment] = None) -> AsyncEngine:
+    """便捷函数：创建异步数据库引擎"""
     return DatabaseFactory.create_engine(env)
 
 
-def get_session_factory(env: Optional[Environment] = None):
-    """便捷函数：创建 Session 工厂"""
+def get_session_factory(env: Optional[Environment] = None) -> async_sessionmaker[AsyncSession]:
+    """便捷函数：创建异步 Session 工厂"""
     engine = get_engine(env)
     return DatabaseFactory.create_session_factory(engine)
 
 
-def get_session(env: Optional[Environment] = None) -> Session:
-    """便捷函数：创建 Session"""
-    engine = get_engine(env)
-    return DatabaseFactory.create_session(engine)
-
-
-def init_database(engine: Optional[Engine] = None) -> None:
+async def init_database(engine: Optional[AsyncEngine] = None) -> None:
     """
-    初始化数据库（创建所有表）
+    初始化数据库（创建所有表）- 异步版
 
     在应用启动时调用，自动创建所有 SQLModel 模型对应的表。
     如果表已存在则跳过。
 
     Args:
-        engine: SQLAlchemy Engine，如果不传则自动创建
+        engine: SQLAlchemy AsyncEngine，如果不传则自动创建
 
     使用示例：
         # 1. 先导入所有模型（确保注册到 SQLModel.metadata）
         from your_app.models import User, Post, Comment
 
         # 2. 初始化数据库
-        init_database(engine)
+        await init_database(engine)
     """
     if engine is None:
         engine = get_engine()
 
-    # SQLModel 使用统一的 metadata
-    SQLModel.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)

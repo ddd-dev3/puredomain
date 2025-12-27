@@ -10,7 +10,7 @@
 - 简洁的装饰器 API
 """
 
-from typing import Type, Optional, Callable, Union
+from typing import Type, Optional, Union
 from pyventus.events import EventLinker, AsyncIOEventEmitter
 
 from domain.common.base_event import DomainEvent
