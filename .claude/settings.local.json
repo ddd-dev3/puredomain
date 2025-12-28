@@ -7,7 +7,11 @@
       "Bash(yes:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(git pull:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Skill(bmad:bmm:workflows:workflow-init)",
+      "Bash(mkdir:*)"
     ]
   }
 }
