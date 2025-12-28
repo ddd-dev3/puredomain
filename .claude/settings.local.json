@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npx bmad-method@alpha install:*)",
+      "Bash(printf:*)",
+      "Bash(yes:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
