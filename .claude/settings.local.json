@@ -11,7 +11,12 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Skill(bmad:bmm:workflows:workflow-init)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(xargs cat:*)",
+      "Bash(uv sync)",
+      "Bash(uv run alembic:*)",
+      "Bash(uv add:*)"
     ]
   }
 }
