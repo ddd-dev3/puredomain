@@ -28,8 +28,8 @@ from dependency_injector import containers, providers
 
 from infrastructure.mediator import create_mediator, get_mediator_factory
 
-# 导入示例 Handlers（可删除）
-from application.handlers.example_handlers import CreateUserHandler
+# 示例 Handlers（需要时取消注释）
+# from application.handlers.example_handlers import CreateUserHandler
 
 if TYPE_CHECKING:
     from .infrastructure import InfraContainer
@@ -44,11 +44,11 @@ class AppContainer(containers.DeclarativeContainer):
     # ============ Mediator ============
     mediator = providers.Singleton(create_mediator)
 
-    # ============ 示例处理器（可删除）============
-    create_user_handler = providers.Factory(
-        CreateUserHandler,
-        uow=infra.unit_of_work
-    )
+    # ============ 示例处理器（需要时取消注释）============
+    # create_user_handler = providers.Factory(
+    #     CreateUserHandler,
+    #     uow=infra.unit_of_work
+    # )
 
     # ============ 在此添加你的 Handler ============
     # 示例：
@@ -70,8 +70,8 @@ def wire_handlers(container: AppContainer) -> None:
     """
     factory = get_mediator_factory()
 
-    # 示例 Handler（可删除）
-    factory.register_handler(CreateUserHandler, container.create_user_handler)
+    # 示例 Handler（需要时取消注释）
+    # factory.register_handler(CreateUserHandler, container.create_user_handler)
 
     # ============ 在此注册你的 Handler ============
     # 示例：

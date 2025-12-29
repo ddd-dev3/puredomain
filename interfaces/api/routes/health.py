@@ -13,8 +13,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from infrastructure.core.containers.bootstrap import get_bootstrap
-from infrastructure.core.config.settings import Settings
+from infrastructure.containers.bootstrap import get_bootstrap
+from infrastructure.config.settings import Settings
 
 
 router = APIRouter(prefix="/health", tags=["Health"])
@@ -37,7 +37,7 @@ async def health_check() -> HealthResponse:
     返回服务状态、版本和环境信息。
     """
     boot = get_bootstrap()
-    settings = boot.config.settings()
+    settings = boot.infra.settings()
 
     return HealthResponse(
         status="ok",
@@ -56,7 +56,7 @@ async def readiness_check() -> HealthResponse:
     用于 Kubernetes readiness probe。
     """
     boot = get_bootstrap()
-    settings = boot.config.settings()
+    settings = boot.infra.settings()
 
     # 检查数据库连接
     db_status = "unknown"

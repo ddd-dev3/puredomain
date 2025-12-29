@@ -5,15 +5,15 @@
 解决连接池耗尽问题。
 """
 
-import logging
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.core.containers.infrastructure import set_request_session
+from infrastructure.containers.infrastructure import set_request_session
+from infrastructure.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DBSessionMiddleware(BaseHTTPMiddleware):

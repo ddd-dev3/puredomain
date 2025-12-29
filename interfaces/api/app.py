@@ -37,11 +37,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastmcp import FastMCP
 
-from infrastructure.core.containers.bootstrap import bootstrap, Bootstrap
-from infrastructure.core.config.settings import get_settings
-from infrastructure.core.database.database_factory import init_database
+from infrastructure.containers.bootstrap import bootstrap, Bootstrap
+from infrastructure.config.settings import get_settings
+from infrastructure.persistence.database_factory import init_database
 from interfaces.api.middleware.api_key_middleware import APIKeyMiddleware
 from interfaces.api.middleware.db_session_middleware import DBSessionMiddleware
+from interfaces.api.middleware.logging_middleware import LoggingMiddleware
 from interfaces.api.routes import health_router
 
 
@@ -141,6 +142,10 @@ class App:
                 api_key=settings.api_key,
                 whitelist_paths=self.api_key_whitelist_paths,
             )
+
+        # 添加日志中间件（最外层，最先执行）
+        # 记录每个请求的方法、路径、状态码、耗时
+        app.add_middleware(LoggingMiddleware)
 
         # 挂载 MCP（在中间件之后，受保护）
         app.mount(self.mcp_path, mcp_app)

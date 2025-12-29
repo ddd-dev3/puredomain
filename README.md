@@ -9,6 +9,8 @@ Python 领域驱动设计（DDD）基础框架 - 开箱即用的 DDD 架构模�
 - 💉 **依赖注入容器**：基于 dependency-injector，管理所有依赖
 - 🧪 **测试友好**：测试环境自动使用 SQLite 内存数据库，超快速
 - 📦 **CQRS 模式**：基于 mediatr-py，Command/Query 与 Handler 同文件组织
+- 📝 **自动化日志横切**：HTTP/Handler/Repository 三层自动日志，代码零侵入
+- 🗃️ **数据库迁移**：集成 Alembic，支持 autogenerate
 
 ---
 
@@ -36,26 +38,32 @@ project/
 │       └── services/            # 领域服务（可选）
 │
 ├── infrastructure/              # ⚙️ 基础设施层（技术实现）
-│   ├── database/
-│   │   └── database_factory.py  # 数据库工厂（多环境自动切换）
+│   ├── persistence/
+│   │   ├── database_factory.py  # 数据库工厂（多环境自动切换）
+│   │   ├── logging_mixin.py     # Repository 日志混入
+│   │   └── migrations/          # Alembic 数据库迁移
 │   ├── config/
 │   │   └── settings.py
 │   ├── containers/              # 依赖注入容器
 │   │   ├── bootstrap.py         # 启动器
 │   │   ├── application.py       # 应用容器 + wire_handlers()
 │   │   └── infrastructure.py    # 基础设施容器
-│   ├── repositories/            # 仓储实现
-│   └── mediator/
-│       └── setup.py             # MediatorFactory
+│   ├── logging/                 # 日志横切（集中管理）
+│   │   ├── logger_factory.py    # 日志工厂（Loguru/Logfire）
+│   │   ├── handler_behavior.py  # Handler 日志 Behavior
+│   │   └── repository_mixin.py  # Repository 日志 Mixin
+│   ├── mediator/
+│   │   └── setup.py             # MediatorFactory
+│   └── repositories/            # 仓储实现
 │
 ├── interfaces/                  # 🌐 接口层
 │   └── api/
 │       ├── app.py               # App 入口
-│       ├── dependencies.py      # Mediator 依赖注入
+│       ├── middleware/
+│       │   └── logging_middleware.py  # HTTP 请求日志
 │       └── routes/
 │
-└── common/                      # 🔧 通用工具
-    └── logging/
+└── alembic.ini                  # 数据库迁移配置
 ```
 
 ---
@@ -184,9 +192,54 @@ export APP_ENV=prod # 自动使用 Supabase
 | **staging / prod** | Logfire | 云端监控，分布式追踪 |
 
 ```python
-from common.logging import get_logger
+from infrastructure.logging import get_logger
 logger = get_logger(__name__)
 logger.info("Hello!")  # 自动选择后端
+```
+
+### 自动化日志横切
+
+框架提供三层自动日志，无需手动编写日志代码：
+
+| 层 | 组件 | 日志内容 |
+|---|---|---|
+| HTTP | `LoggingMiddleware` | 请求方法、路径、状态码、耗时 |
+| Handler | `LoggingBehavior` | Command/Query 名称、执行时间 |
+| Repository | `LoggingRepositoryMixin` | CRUD 操作记录 |
+
+**示例输出：**
+```
+14:30:46 | INFO | [abc123] -> POST /api/orders
+14:30:46 | INFO | >> CreateOrderCommand executing...
+14:30:46 | DEBUG | OrderRepository.add(Order)
+14:30:46 | INFO | << CreateOrderCommand completed 24ms
+14:30:46 | INFO | [abc123] <- 201 Created 26ms
+```
+
+**Repository 使用 Mixin（可选）：**
+```python
+from infrastructure.logging.repository_mixin import LoggingRepositoryMixin
+
+class OrderRepository(LoggingRepositoryMixin, SqlAlchemyRepository):
+    pass  # 自动有 CRUD 日志
+```
+
+---
+
+### 数据库迁移（Alembic）
+
+```bash
+# 生成迁移（自动检测模型变化）
+uv run alembic revision --autogenerate -m "add user table"
+
+# 执行迁移
+uv run alembic upgrade head
+
+# 回滚
+uv run alembic downgrade -1
+
+# 查看当前版本
+uv run alembic current
 ```
 
 ---

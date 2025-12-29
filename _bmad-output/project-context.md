@@ -22,7 +22,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 | dependency-injector | >= 4.48.2 | 依赖注入容器 |
 | mediatr | >= 1.3.2 | CQRS Mediator 模式 |
 | pydantic-settings | >= 2.12.0 | 配置管理 |
-| loguru | >= 0.7.3 | 日志 |
+| loguru | >= 0.7.3 | 日志（本地） |
+| alembic | >= 1.14.0 | 数据库迁移 |
 | pytest | >= 8.0.0 | 测试框架 |
 | pytest-asyncio | >= 0.23.0 | 异步测试支持 |
 
@@ -78,6 +79,27 @@ interfaces/      # 接口层 - API 端点
       await uow.commit()
   ```
 - **异常时自动回滚**
+
+### 自动化日志横切
+
+框架提供三层自动日志，**无需在代码中手动编写日志**：
+
+| 层 | 组件 | 说明 |
+|---|---|---|
+| HTTP | `LoggingMiddleware` | 自动记录请求/响应 |
+| Handler | `LoggingBehavior` | 自动记录 Command/Query 执行 |
+| Repository | `LoggingRepositoryMixin` | 可选混入，记录 CRUD 操作 |
+
+- **不要在 Handler 中手动写日志**：已有 LoggingBehavior 自动记录
+- **Repository 日志是可选的**：继承 `LoggingRepositoryMixin` 即可启用
+- **日志使用 `infrastructure.logging.get_logger()`**
+
+### 数据库迁移 (Alembic)
+
+- **迁移文件位置**: `infrastructure/persistence/migrations/versions/`
+- **生成迁移**: `uv run alembic revision --autogenerate -m "描述"`
+- **执行迁移**: `uv run alembic upgrade head`
+- **SQLModel 模型需在 `env.py` 中导入**才能被 autogenerate 检测
 
 ### Entity 和 Aggregate
 

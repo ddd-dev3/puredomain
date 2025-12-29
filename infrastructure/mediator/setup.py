@@ -40,6 +40,8 @@ Mediator 配置与工厂
 from typing import Type, Any, Dict, Optional, Callable
 from mediatr import Mediator
 
+from infrastructure.logging.handler_behavior import register_logging_behavior
+
 
 
 class MediatorFactory:
@@ -95,6 +97,8 @@ def get_mediator_factory() -> MediatorFactory:
     """获取全局 MediatorFactory 实例"""
     global _factory
     if _factory is None:
+        # 注册全局 behaviors（在创建 factory 前）
+        register_logging_behavior()
         _factory = MediatorFactory()
     return _factory
 
