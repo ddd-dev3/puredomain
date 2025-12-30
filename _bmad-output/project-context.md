@@ -80,19 +80,45 @@ interfaces/      # 接口层 - API 端点
   ```
 - **异常时自动回滚**
 
+### CQRS Pipeline Behaviors（横切关注点）
+
+框架提供完整的 Pipeline Behaviors，**自动处理验证、异常、事务、日志**：
+
+| 顺序 | Behavior | 作用 |
+|------|----------|------|
+| 1 | `ValidationBehavior` | 自动验证 Command/Query 参数（Pydantic） |
+| 2 | `ExceptionBehavior` | 捕获异常并转换为统一格式 |
+| 3 | `TransactionBehavior` | Command 自动包装 savepoint |
+| 4 | `LoggingBehavior` | 自动记录执行日志 |
+
+- **Handler 只需写业务逻辑**：验证、事务、异常、日志全自动
+- **领域异常自动转换**：`DomainException` → HTTP 状态码 + 统一 JSON 格式
+- **链路追踪**：所有日志包含 `request_id`，可追踪完整请求链路
+
+```python
+# Handler 示例 - 只写业务！
+class CreateUserHandler:
+    async def handle(self, request: CreateUserCommand):
+        user = User(name=request.name)
+        await self._uow.users.add(user)
+        return user.id
+        # 验证、事务、异常、日志 —— Pipeline 自动处理
+```
+
 ### 自动化日志横切
 
 框架提供三层自动日志，**无需在代码中手动编写日志**：
 
 | 层 | 组件 | 说明 |
 |---|---|---|
-| HTTP | `LoggingMiddleware` | 自动记录请求/响应 |
-| Handler | `LoggingBehavior` | 自动记录 Command/Query 执行 |
-| Repository | `LoggingRepositoryMixin` | 可选混入，记录 CRUD 操作 |
+| HTTP | `LoggingMiddleware` | 自动记录请求/响应（含 request_id） |
+| Handler | `LoggingBehavior` | 自动记录 Command/Query 执行（含 request_id） |
+| Repository | `LoggingRepositoryMixin` | 可选混入，记录 CRUD 操作（含 request_id） |
 
 - **不要在 Handler 中手动写日志**：已有 LoggingBehavior 自动记录
 - **Repository 日志是可选的**：继承 `LoggingRepositoryMixin` 即可启用
 - **日志使用 `infrastructure.logging.get_logger()`**
+- **request_id 贯穿全链路**：便于问题排查
 
 ### 数据库迁移 (Alembic)
 

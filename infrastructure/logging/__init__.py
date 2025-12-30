@@ -7,7 +7,7 @@
 - logfire: Logfire（现代化可观测性）
 
 使用方式：
-    from shared.logging import get_logger
+    from infrastructure.logging import get_logger
 
     logger = get_logger(__name__)
     logger.info("Hello, world!")
@@ -17,7 +17,7 @@
     export LOG_BACKEND=loguru
 
     # 方式 2：代码
-    from shared.logging import set_log_backend
+    from infrastructure.logging import set_log_backend
     set_log_backend("logfire")
 """
 

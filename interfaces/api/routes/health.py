@@ -12,6 +12,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import text
 
 from infrastructure.containers.bootstrap import get_bootstrap
 from infrastructure.config.settings import Settings
@@ -62,9 +63,8 @@ async def readiness_check() -> HealthResponse:
     db_status = "unknown"
     try:
         session_factory = boot.infra.db_session_factory()
-        session = session_factory()
-        session.execute("SELECT 1")
-        session.close()
+        async with session_factory() as session:
+            await session.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception as e:
         db_status = f"error: {str(e)}"

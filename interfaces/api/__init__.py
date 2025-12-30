@@ -18,11 +18,17 @@ API 接口层
         return {}
 
     app.run()
+
+异常处理：
+    框架自动注册异常处理器，将 ApplicationException 和 ValidationException
+    转换为统一的 JSON 响应格式。
 """
 
 from interfaces.api.app import App, create_app
+from interfaces.api.exception_handlers import register_exception_handlers
 
 __all__ = [
     "App",
     "create_app",
+    "register_exception_handlers",
 ]

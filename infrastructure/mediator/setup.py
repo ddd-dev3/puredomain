@@ -40,6 +40,7 @@ Mediator 配置与工厂
 from typing import Type, Any, Dict, Optional, Callable
 from mediatr import Mediator
 
+from infrastructure.behaviors import register_all_behaviors
 from infrastructure.logging.handler_behavior import register_logging_behavior
 
 
@@ -98,6 +99,8 @@ def get_mediator_factory() -> MediatorFactory:
     global _factory
     if _factory is None:
         # 注册全局 behaviors（在创建 factory 前）
+        # 顺序：Validation -> Exception -> Transaction -> Logging
+        register_all_behaviors()
         register_logging_behavior()
         _factory = MediatorFactory()
     return _factory

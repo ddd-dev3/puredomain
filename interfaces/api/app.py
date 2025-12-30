@@ -44,6 +44,7 @@ from interfaces.api.middleware.api_key_middleware import APIKeyMiddleware
 from interfaces.api.middleware.db_session_middleware import DBSessionMiddleware
 from interfaces.api.middleware.logging_middleware import LoggingMiddleware
 from interfaces.api.routes import health_router
+from interfaces.api.exception_handlers import register_exception_handlers
 
 
 class App:
@@ -152,6 +153,9 @@ class App:
 
         # 注册路由
         app.include_router(health_router)
+
+        # 注册异常处理器
+        register_exception_handlers(app)
 
         return app
 

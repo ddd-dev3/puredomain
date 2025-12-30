@@ -37,12 +37,14 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
+            # 成功时提交事务（如果有待提交的更改）
+            await session.commit()
             return response
         except Exception as e:
             # 发生异常时回滚
-            session.rollback()
+            await session.rollback()
             raise
         finally:
             # 清理：关闭 Session，归还连接到连接池
             set_request_session(None)
-            session.close()
+            await session.close()

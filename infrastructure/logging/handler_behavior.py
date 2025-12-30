@@ -5,12 +5,15 @@ Handler 层日志 Behavior
 - 执行开始
 - 执行成功和耗时
 - 执行失败和异常信息
+
+日志包含 request_id 用于链路追踪。
 """
 
 import time
 from typing import Any, Callable, Awaitable
 
 from infrastructure.logging import get_logger
+from interfaces.api.middleware.logging_middleware import get_request_id
 
 logger = get_logger(__name__)
 
@@ -36,21 +39,22 @@ class LoggingBehavior:
             next_handler: 调用下一个 behavior 或实际 handler 的函数
         """
         request_name = type(request).__name__
+        request_id = get_request_id() or "-"
         start = time.perf_counter()
 
-        logger.info(f">> {request_name} executing...")
+        logger.info(f"[{request_id}] >> {request_name} executing...")
 
         try:
             result = await next_handler()
 
             duration_ms = (time.perf_counter() - start) * 1000
-            logger.info(f"<< {request_name} completed {duration_ms:.0f}ms")
+            logger.info(f"[{request_id}] << {request_name} completed {duration_ms:.0f}ms")
 
             return result
 
         except Exception as e:
             duration_ms = (time.perf_counter() - start) * 1000
-            logger.error(f"<< {request_name} failed: {type(e).__name__}: {e} {duration_ms:.0f}ms")
+            logger.error(f"[{request_id}] << {request_name} failed: {type(e).__name__}: {e} {duration_ms:.0f}ms")
             raise
 
 
